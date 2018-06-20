@@ -1,0 +1,57 @@
+#! /usr/bin/env bash
+
+function main() {
+    echo ""
+    echo "Starting Stellar Core"
+    echo ""
+
+    process_args $*
+    setup
+
+    if ${INIT_DB_FLAG}; then
+        echo "Init Stellar Core DB"
+        wait_for_postgres
+        /usr/local/bin/stellar-core --newdb --conf ${CORE_HOME}/etc/stellar-core.cfg
+    fi
+
+    bash ${CORE_HOME}/bin/start
+}
+
+function process_args() {
+    NETWORK="pubnet"
+    INIT_DB_FLAG=false
+    while [[ -n "$1" ]]; do
+        ARG="$1"
+        shift
+        case "${ARG}" in
+        --testnet)
+            NETWORK="testnet"
+            ;;
+        --pubnet)
+            NETWORK="pubnet"
+            ;;
+        --newdb)
+            INIT_DB_FLAG=true
+            ;;
+        esac
+    done
+}
+
+function setup() {
+    echo ${PGPASS} > ${HOME}/.pgpass && chmod 0600 ${HOME}/.pgpass
+    cp ${CORE_HOME}/etc/stellar-core.${NETWORK}.cfg ${CORE_HOME}/etc/stellar-core.cfg
+    sed -ri "s/__PGHOST__/${PGHOST}/g" ${CORE_HOME}/etc/stellar-core.cfg
+    sed -ri "s/__PGPORT__/${PGPORT:-5432}/g" ${CORE_HOME}/etc/stellar-core.cfg
+    sed -ri "s/__PGUSER__/${PGUSER}/g" ${CORE_HOME}/etc/stellar-core.cfg
+    sed -ri "s/__PGPASS__/${PGPASS}/g" ${CORE_HOME}/etc/stellar-core.cfg
+    sed -ri "s/__PGDB__/${PGDB}/g" ${CORE_HOME}/etc/stellar-core.cfg
+}
+
+function wait_for_postgres() {
+    while ! psql "dbname=${PGDB} host=${PGHOST} port=${PGPORT:-5432} sslmode=disable user=${PGUSER} password=${PGPASS}" -c 'select 1' &> /dev/null ; do
+        echo "Waiting for postgres to be available..."
+        sleep 1
+    done
+}
+
+main $@

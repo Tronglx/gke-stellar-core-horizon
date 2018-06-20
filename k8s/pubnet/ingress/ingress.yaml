@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: stellar-horizon
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: stellar-horizon-static-ip
+spec:
+#  tls:
+#  - secretName: your-tls-secret-name
+#    hosts:
+#    - SET_YOUR_STELLAR_HORIZON_DOMAIN (such as your-stellar-horizon.io)
+  rules:
+  - host: SET_YOUR_STELLAR_HORIZON_DOMAIN (such as your-stellar-horizon.io)
+    http:
+      paths:
+      - path: /*
+        backend:
+          serviceName: stellar-horizon
+          servicePort: 8000

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stellar-core
+  labels:
+    name: stellar-core
+spec:
+  ports:
+    - port: 11626
+      targetPort: 11626
+      protocol: TCP
+  type: NodePort
+  selector:
+    run: stellar-core

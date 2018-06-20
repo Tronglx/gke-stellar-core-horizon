@@ -1,0 +1,64 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: stellar-core
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: stellar-core
+    spec:
+      containers:
+        - name: stellar-core
+          image: YOUR_DOCKER_IMAGE_REPOSITORY_URL (such as gcr.io/${PROJECT_ID}/${APP_NAME}:${tag})
+#         command: ["/init", "--", "/start", "--newdb"]
+          command: ["/init", "--", "/start"]
+          env:
+          - name: GET_HOSTS_FROM
+            value: dns
+          - name: PGHOST
+            value: "127.0.0.1"
+          - name: PGPORT
+            value: "5432"
+          - name: PGUSER
+            value: stellar
+          - name: PGPASS
+            valueFrom:
+              secretKeyRef:
+                name: stellar-core-db
+                key: pgpass
+          - name: PGDB
+            value: core
+          ports:
+          - containerPort: 11626
+          volumeMounts:
+            - name: stellar-core-storage
+              mountPath: /opt/stellar/core/work
+        - name: cloudsql-proxy
+          image: gcr.io/cloudsql-docker/gce-proxy:1.11
+          command: ["/cloud_sql_proxy", "--dir=/cloudsql",
+                    "-instances=YOUR_CLOUD_SQL_INSTANCE_ID=tcp:5432",
+                    "-credential_file=/secrets/cloudsql/credentials.json"]
+          volumeMounts:
+            - name: cloudsql-instance-credentials
+              mountPath: /secrets/cloudsql
+              readOnly: true
+            - name: ssl-certs
+              mountPath: /etc/ssl/certs
+            - name: cloudsql
+              mountPath: /cloudsql
+      securityContext:
+        fsGroup: 1000
+      volumes:
+        - name: cloudsql-instance-credentials
+          secret:
+            secretName: cloudsql-instance-credentials
+        - name: cloudsql
+          emptyDir:
+        - name: ssl-certs
+          hostPath:
+            path: /etc/ssl/certs
+        - name: stellar-core-storage
+          persistentVolumeClaim:
+            claimName: stellar-core-pvc

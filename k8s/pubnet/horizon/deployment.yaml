@@ -1,0 +1,77 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: stellar-horizon
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: stellar-horizon
+    spec:
+      containers:
+        - name: stellar-horizon
+          image: YOUR_DOCKER_IMAGE_REPOSITORY_URL (such as gcr.io/${PROJECT_ID}/${APP_NAME}:${tag})
+#         command: ["/init", "--", "/start", "--newdb"]
+          command: ["/init", "--", "/start"]
+          env:
+          - name: GET_HOSTS_FROM
+            value: dns
+          - name: CORE_PGHOST
+            value: "127.0.0.1"
+          - name: CORE_PGPORT
+            value: "5432"
+          - name: CORE_PGUSER
+            value: stellar
+          - name: CORE_PGPASS
+            valueFrom:
+              secretKeyRef:
+                name: stellar-core-db
+                key: pgpass
+          - name: CORE_PGDB
+            value: core
+          - name: CORE_HOST
+            value: stellar-core
+          - name: CORE_PORT
+            value: "11626"
+#         - name: REDIS_HOST
+#           value: stellar-horizon-redis
+#         - name: REDIS_PORT
+#           value: 6379
+          - name: HORIZON_PGHOST
+            value: "127.0.0.1"
+          - name: HORIZON_PGPORT
+            value: "5432"
+          - name: HORIZON_PGUSER
+            value: stellar
+          - name: HORIZON_PGPASS
+            valueFrom:
+              secretKeyRef:
+                name: stellar-horizon-db
+                key: pgpass
+          - name: HORIZON_PGDB
+            value: horizon
+          ports:
+          - containerPort: 8000
+        - name: cloudsql-proxy
+          image: gcr.io/cloudsql-docker/gce-proxy:1.11
+          command: ["/cloud_sql_proxy", "--dir=/cloudsql",
+                    "-instances=YOUR_CLOUD_SQL_INSTANCE_ID=tcp:5432",
+                    "-credential_file=/secrets/cloudsql/credentials.json"]
+          volumeMounts:
+            - name: cloudsql-instance-credentials
+              mountPath: /secrets/cloudsql
+              readOnly: true
+            - name: ssl-certs
+              mountPath: /etc/ssl/certs
+            - name: cloudsql
+              mountPath: /cloudsql
+      volumes:
+        - name: cloudsql-instance-credentials
+          secret:
+            secretName: cloudsql-instance-credentials
+        - name: cloudsql
+          emptyDir:
+        - name: ssl-certs
+          hostPath:
+            path: /etc/ssl/certs

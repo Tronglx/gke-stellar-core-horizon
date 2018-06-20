@@ -1,0 +1,52 @@
+#! /usr/bin/env bash
+
+function main() {
+    echo ""
+    echo "Starting Stellar Horizon"
+    echo ""
+
+    process_args $*
+    setup
+
+    if ${INIT_DB_FLAG}; then
+        echo "Init Stellar Horizon DB"
+        wait_for_postgres
+        ${HORIZON_HOME}/bin/horizon db init
+    fi
+
+    bash ${HORIZON_HOME}/bin/start
+}
+
+function process_args() {
+    NETWORK="pubnet"
+    INIT_DB_FLAG=false
+    while [[ -n "$1" ]]; do
+        ARG="$1"
+        shift
+        case "${ARG}" in
+        --testnet)
+            NETWORK="testnet"
+            ;;
+        --pubnet)
+            NETWORK="pubnet"
+            ;;
+        --newdb)
+            INIT_DB_FLAG=true
+            ;;
+        esac
+    done
+}
+
+function setup() {
+    echo ${PGPASS} > ${HOME}/.pgpass && chmod 0600 ${HOME}/.pgpass
+    cp ${HORIZON_HOME}/etc/horizon.${NETWORK}.env ${HORIZON_HOME}/etc/horizon.env
+}
+
+function wait_for_postgres() {
+    while ! psql "dbname=${HORIZON_PGDB} host=${HORIZON_PGHOST} port=${HORIZON_PGPORT:-5432} sslmode=disable user=${HORIZON_PGUSER} password=${HORIZON_PGPASS}" -c 'select 1' &> /dev/null ; do
+        echo "Waiting for postgres to be available..."
+        sleep 1
+    done
+}
+
+main $@

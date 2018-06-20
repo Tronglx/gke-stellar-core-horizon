@@ -1,0 +1,68 @@
+version: "2"
+services:
+  stellar-core:
+    build: ./core
+    command: /init -- /start --testnet --newdb
+    ports:
+      - "11625:11625"
+      - "11626:11626"
+    environment:
+      PGHOST: stellar-core-db
+      PGPORT: 5432
+      PGUSER: stellar
+      PGPASS: dbpass
+      PGDB: core
+    container_name: stellar-core
+  stellar-core-db:
+    image: postgres
+    environment:
+      POSTGRES_USER: stellar
+      POSTGRES_PASSWORD: dbpass
+      POSTGRES_DB: core
+    ports:
+      - "5432:5432"
+    container_name: stellar-core-db
+    volumes:
+      - stellar-core-db-data:/var/lib/postgresql/data
+  stellar-horizon:
+    build: ./horizon
+    command: /init -- /start --testnet --newdb
+    ports:
+      - "8000:8000"
+    environment:
+      CORE_PGHOST: stellar-core-db
+      CORE_PGPORT: 5432
+      CORE_PGUSER: stellar
+      CORE_PGPASS: dbpass
+      CORE_PGDB: core
+      CORE_HOST: stellar-core
+      CORE_PORT: 11626
+      REDIS_HOST: stellar-horizon-redis
+      REDIS_PORT: 6379
+      HORIZON_PGHOST: stellar-horizon-db
+      HORIZON_PGPORT: 5432
+      HORIZON_PGUSER: stellar
+      HORIZON_PGPASS: dbpass
+      HORIZON_PGDB: horizon
+    container_name: stellar-horizon
+  stellar-horizon-db:
+    image: postgres
+    environment:
+      POSTGRES_USER: stellar
+      POSTGRES_PASSWORD: dbpass
+      POSTGRES_DB: horizon
+    ports:
+      - "5433:5432"
+    container_name: stellar-horizon-db
+    volumes:
+      - stellar-horizon-db-data:/var/lib/postgresql/data
+  stellar-horizon-redis:
+    image: redis:3.2
+    ports:
+      - "6379:6379"
+    container_name: stellar-horizon-redis
+volumes:
+  stellar-core-db-data:
+    driver: local
+  stellar-horizon-db-data:
+    driver: local

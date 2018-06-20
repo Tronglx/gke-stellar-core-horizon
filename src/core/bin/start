@@ -1,0 +1,10 @@
+#!/bin/bash
+
+while ! psql "dbname=${PGDB} host=${PGHOST} port=${PGPORT:-5432} sslmode=disable user=${PGUSER} password=${PGPASS}" -c 'select 1' &> /dev/null ; do
+  echo "Waiting for postgres to be available..."
+  sleep 1
+done
+
+echo "starting core..."
+set -e
+exec /usr/local/bin/stellar-core --conf "${CORE_HOME}/etc/stellar-core.cfg"
